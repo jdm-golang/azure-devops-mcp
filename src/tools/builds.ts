@@ -3,9 +3,11 @@
 
 import { AccessToken } from "@azure/identity";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { apiVersion } from "../utils.js";
 import { WebApi } from "azure-devops-node-api";
 import { BuildQueryOrder, DefinitionQueryOrder } from "azure-devops-node-api/interfaces/BuildInterfaces.js";
 import { z } from "zod";
+import { StageUpdateType } from "azure-devops-node-api/interfaces/BuildInterfaces.js";
 
 const BUILD_TOOLS = {
   get_definitions: "build_get_definitions",
@@ -15,15 +17,11 @@ const BUILD_TOOLS = {
   get_log_by_id: "build_get_log_by_id",
   get_changes: "build_get_changes",
   run_build: "build_run_build",
-  get_status: "build_get_status"
+  get_status: "build_get_status",
+  update_build_stage: "build_update_build_stage",
 };
 
-function configureBuildTools(
-  server: McpServer,
-  tokenProvider: () => Promise<AccessToken>,
-  connectionProvider: () => Promise<WebApi>
-) {
-  
+function configureBuildTools(server: McpServer, tokenProvider: () => Promise<AccessToken>, connectionProvider: () => Promise<WebApi>) {
   server.tool(
     BUILD_TOOLS.get_definitions,
     "Retrieves a list of build definitions for a given project.",
@@ -36,10 +34,10 @@ function configureBuildTools(
       queryOrder: z.nativeEnum(DefinitionQueryOrder).optional().describe("Order in which build definitions are returned"),
       top: z.number().optional().describe("Maximum number of build definitions to return"),
       continuationToken: z.string().optional().describe("Token for continuing paged results"),
-      minMetricsTime: z.date().optional().describe("Minimum metrics time to filter build definitions"),
+      minMetricsTime: z.coerce.date().optional().describe("Minimum metrics time to filter build definitions"),
       definitionIds: z.array(z.number()).optional().describe("Array of build definition IDs to filter"),
-      builtAfter: z.date().optional().describe("Return definitions that have builds after this date"),
-      notBuiltAfter: z.date().optional().describe("Return definitions that do not have builds after this date"),
+      builtAfter: z.coerce.date().optional().describe("Return definitions that have builds after this date"),
+      notBuiltAfter: z.coerce.date().optional().describe("Return definitions that do not have builds after this date"),
       includeAllProperties: z.boolean().optional().describe("Whether to include all properties in the results"),
       includeLatestBuilds: z.boolean().optional().describe("Whether to include the latest builds for each definition"),
       taskIdFilter: z.string().optional().describe("Task ID to filter build definitions"),
@@ -92,7 +90,7 @@ function configureBuildTools(
       };
     }
   );
-  
+
   server.tool(
     BUILD_TOOLS.get_definition_revisions,
     "Retrieves a list of revisions for a specific build definition.",
@@ -110,7 +108,7 @@ function configureBuildTools(
       };
     }
   );
- 
+
   server.tool(
     BUILD_TOOLS.get_builds,
     "Retrieves a list of builds for a given project.",
@@ -119,8 +117,8 @@ function configureBuildTools(
       definitions: z.array(z.number()).optional().describe("Array of build definition IDs to filter builds"),
       queues: z.array(z.number()).optional().describe("Array of queue IDs to filter builds"),
       buildNumber: z.string().optional().describe("Build number to filter builds"),
-      minTime: z.date().optional().describe("Minimum finish time to filter builds"),
-      maxTime: z.date().optional().describe("Maximum finish time to filter builds"),
+      minTime: z.coerce.date().optional().describe("Minimum finish time to filter builds"),
+      maxTime: z.coerce.date().optional().describe("Maximum finish time to filter builds"),
       requestedFor: z.string().optional().describe("User ID or name who requested the build"),
       reasonFilter: z.number().optional().describe("Reason filter for the build (see BuildReason enum)"),
       statusFilter: z.number().optional().describe("Status filter for the build (see BuildStatus enum)"),
@@ -191,7 +189,7 @@ function configureBuildTools(
       };
     }
   );
-  
+
   server.tool(
     BUILD_TOOLS.get_log,
     "Retrieves the logs for a specific build.",
@@ -209,12 +207,12 @@ function configureBuildTools(
       };
     }
   );
-  
+
   server.tool(
     BUILD_TOOLS.get_log_by_id,
     "Get a specific build log by log ID.",
     {
-      project: z.string().describe("Project ID or name to get the build log for"),  
+      project: z.string().describe("Project ID or name to get the build log for"),
       buildId: z.number().describe("ID of the build to get the log for"),
       logId: z.number().describe("ID of the log to retrieve"),
       startLine: z.number().optional().describe("Starting line number for the log content, defaults to 0"),
@@ -223,20 +221,14 @@ function configureBuildTools(
     async ({ project, buildId, logId, startLine, endLine }) => {
       const connection = await connectionProvider();
       const buildApi = await connection.getBuildApi();
-      const logLines = await buildApi.getBuildLogLines(
-        project,
-        buildId,
-        logId,
-        startLine,
-        endLine
-      );
+      const logLines = await buildApi.getBuildLogLines(project, buildId, logId, startLine, endLine);
 
       return {
         content: [{ type: "text", text: JSON.stringify(logLines, null, 2) }],
       };
     }
   );
-  
+
   server.tool(
     BUILD_TOOLS.get_changes,
     "Get the changes associated with a specific build.",
@@ -250,13 +242,7 @@ function configureBuildTools(
     async ({ project, buildId, continuationToken, top, includeSourceChange }) => {
       const connection = await connectionProvider();
       const buildApi = await connection.getBuildApi();
-      const changes = await buildApi.getBuildChanges(
-        project,
-        buildId,
-        continuationToken,
-        top,
-        includeSourceChange
-      );
+      const changes = await buildApi.getBuildChanges(project, buildId, continuationToken, top, includeSourceChange);
 
       return {
         content: [{ type: "text", text: JSON.stringify(changes, null, 2) }],
@@ -271,14 +257,34 @@ function configureBuildTools(
       project: z.string().describe("Project ID or name to run the build in"),
       definitionId: z.number().describe("ID of the build definition to run"),
       sourceBranch: z.string().optional().describe("Source branch to run the build from. If not provided, the default branch will be used."),
+      parameters: z.record(z.string(), z.string()).optional().describe("Custom build parameters as key-value pairs"),
     },
-    async ({ project, definitionId, sourceBranch }) => {
+    async ({ project, definitionId, sourceBranch, parameters }) => {
       const connection = await connectionProvider();
       const buildApi = await connection.getBuildApi();
-      const build = await buildApi.queueBuild({ definition: { id: definitionId }, sourceBranch }, project);
+      const pipelinesApi = await connection.getPipelinesApi();
+      const definition = await buildApi.getDefinition(project, definitionId);
+      const runRequest = {
+        resources: {
+          repositories: {
+            self: {
+              refName: sourceBranch || definition.repository?.defaultBranch || "refs/heads/main",
+            },
+          },
+        },
+        templateParameters: parameters,
+      };
 
+      const pipelineRun = await pipelinesApi.runPipeline(runRequest, project, definitionId);
+      const queuedBuild = { id: pipelineRun.id };
+      const buildId = queuedBuild.id;
+      if (buildId === undefined) {
+        throw new Error("Failed to get build ID from pipeline run");
+      }
+
+      const buildReport = await buildApi.getBuildReport(project, buildId);
       return {
-        content: [{ type: "text", text: JSON.stringify(build, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(buildReport, null, 2) }],
       };
     }
   );
@@ -297,6 +303,49 @@ function configureBuildTools(
 
       return {
         content: [{ type: "text", text: JSON.stringify(build, null, 2) }],
+      };
+    }
+  );
+
+  server.tool(
+    BUILD_TOOLS.update_build_stage,
+    "Updates the stage of a specific build.",
+    {
+      project: z.string().describe("Project ID or name to update the build stage for"),
+      buildId: z.number().describe("ID of the build to update"),
+      stageName: z.string().describe("Name of the stage to update"),
+      status: z.nativeEnum(StageUpdateType).describe("New status for the stage"),
+      forceRetryAllJobs: z.boolean().default(false).describe("Whether to force retry all jobs in the stage."),
+    },
+    async ({ project, buildId, stageName, status, forceRetryAllJobs }) => {
+      const connection = await connectionProvider();
+      const orgUrl = connection.serverUrl;
+      const endpoint = `${orgUrl}/${project}/_apis/build/builds/${buildId}/stages/${stageName}?api-version=${apiVersion}`;
+      const token = await tokenProvider();
+
+      const body = {
+        forceRetryAllJobs: forceRetryAllJobs,
+        state: status.valueOf(),
+      };
+
+      const response = await fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token.token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to update build stage: ${response.status} ${errorText}`);
+      }
+
+      const updatedBuild = await response.text();
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(updatedBuild, null, 2) }],
       };
     }
   );

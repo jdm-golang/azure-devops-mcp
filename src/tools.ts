@@ -6,6 +6,7 @@ import { AccessToken } from "@azure/identity";
 import { WebApi } from "azure-devops-node-api";
 
 import { configureCoreTools } from "./tools/core.js";
+import { configureWorkTools } from "./tools/work.js";
 import { configureBuildTools } from "./tools/builds.js";
 import { configureRepoTools } from "./tools/repos.js";
 import { configureWorkItemTools } from "./tools/workitems.js";
@@ -14,19 +15,16 @@ import { configureWikiTools } from "./tools/wiki.js";
 import { configureTestPlanTools } from "./tools/testplans.js";
 import { configureSearchTools } from "./tools/search.js";
 
-function configureAllTools(
-  server: McpServer,
-  tokenProvider: () => Promise<AccessToken>,
-  connectionProvider: () => Promise<WebApi>
-) {
-    configureCoreTools(server, tokenProvider, connectionProvider);
-    configureBuildTools(server, tokenProvider, connectionProvider);
-    configureRepoTools(server, tokenProvider, connectionProvider);
-    configureWorkItemTools(server, tokenProvider, connectionProvider);
-    configureReleaseTools(server, tokenProvider, connectionProvider);
-    configureWikiTools(server, tokenProvider, connectionProvider);
-    configureTestPlanTools(server, tokenProvider, connectionProvider);
-    configureSearchTools(server, tokenProvider, connectionProvider);
+function configureAllTools(server: McpServer, tokenProvider: () => Promise<AccessToken>, connectionProvider: () => Promise<WebApi>, userAgentProvider: () => string) {
+  configureCoreTools(server, tokenProvider, connectionProvider);
+  configureWorkTools(server, tokenProvider, connectionProvider);
+  configureBuildTools(server, tokenProvider, connectionProvider);
+  configureRepoTools(server, tokenProvider, connectionProvider);
+  configureWorkItemTools(server, tokenProvider, connectionProvider, userAgentProvider);
+  configureReleaseTools(server, tokenProvider, connectionProvider);
+  configureWikiTools(server, tokenProvider, connectionProvider);
+  configureTestPlanTools(server, tokenProvider, connectionProvider);
+  configureSearchTools(server, tokenProvider, connectionProvider, userAgentProvider);
 }
 
 export { configureAllTools };

@@ -1,11 +1,15 @@
 {
   "name": "@azure-devops/mcp",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "description": "MCP server for interacting with Azure DevOps",
   "license": "MIT",
   "author": "Microsoft Corporation",
-  "homepage": "TBD",
-  "bugs": "TBD",
+  "homepage": "https://github.com/microsoft/azure-devops-mcp",
+  "bugs": "https://github.com/microsoft/azure-devops-mcp/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/azure-devops-mcp.git"
+  },
   "type": "module",
   "bin": {
     "mcp-server-azuredevops": "dist/index.js"
@@ -13,9 +17,12 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "preinstall": "npm config set registry https://registry.npmjs.org/",
-    "prebuild": "node -p \"'export const packageVersion = ' + JSON.stringify(require('./package.json').version) + ';\\r'\" > src/version.ts",
+    "prebuild": "node -p \"'export const packageVersion = ' + JSON.stringify(require('./package.json').version) + ';\\n'\" > src/version.ts && prettier --write src/version.ts",
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
     "watch": "tsc --watch",
@@ -23,30 +30,34 @@
     "start": "node -r tsconfig-paths/register dist/index.js",
     "eslint": "eslint",
     "eslint-fix": "eslint --fix",
+    "format": "prettier --write .",
+    "format-check": "prettier --check .",
     "clean": "shx rm -rf dist",
     "test": "jest"
   },
   "dependencies": {
     "@azure/identity": "^4.10.0",
-    "@modelcontextprotocol/sdk": "1.12.1",
+    "@modelcontextprotocol/sdk": "1.13.2",
     "azure-devops-extension-api": "^4.252.0",
     "azure-devops-extension-sdk": "^4.0.2",
     "azure-devops-node-api": "^15.1.0",
     "express": "^5.1.0",
     "save-dev": "^0.0.1-security",
-    "zod": "^3.25.55",
+    "zod": "^3.25.63",
     "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
-    "@modelcontextprotocol/inspector": "^0.14.0",
+    "@modelcontextprotocol/inspector": "^0.15.0",
     "@types/express": "^5.0.3",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^22.16.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22",
+    "eslint-config-prettier": "10.1.5",
     "eslint-plugin-header": "^3.1.1",
-    "jest": "^29.7.0",
+    "jest": "^30.0.2",
     "jest-extended": "^6.0.0",
+    "prettier": "3.6.2",
     "shx": "^0.4.0",
-    "ts-jest": "^29.3.4",
+    "ts-jest": "^29.4.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1"

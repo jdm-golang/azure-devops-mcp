@@ -1,6 +1,12 @@
 # Contributing to Azure DevOps MCP Server
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/microsoft/azure-devops-mcp)
+
 Thank you for your interest in contributing to the Azure DevOps MCP Server! Your participation—whether through discussions, reporting issues, or suggesting improvements—helps us make the project better for everyone.
+
+## 🏆 Expectations
+
+As noted in the `README.md`, we aim to keep the tools in this MCP Server simple and focused on specific scenarios. If you wish to contribute or suggest new tools, please keep this in mind. We do not plan to introduce complex tools that require extensive logic. Our goal is to provide a straightforward abstraction layer over the REST API to accomplish targeted tasks.
 
 ## 🪲 Bugs and feature requests
 
@@ -16,11 +22,15 @@ When creating an issue:
 - **DO** provide a detailed description of the issue or feature request.
 - **DO** include any relevant REST endpoints you wish to integrate with. Refer to the [public REST API documentation](https://learn.microsoft.com/en-us/rest/api/azure/devops).
 
-For reference, see [this example of a well-formed issue](<repo>_issues/41).
+For reference, see [this example of a well-formed issue](https://github.com/microsoft/azure-devops-mcp/issues/70).
 
 ## 👩‍💻 Writing code
 
-We are **not currently accepting pull requests** during the public preview phase. If you notice something that should be changed or added, please create an issue and provide details.
+We are accepting a limited number of pull requests during the public preview phase. If you notice something that should be changed or added, please create an issue first and provide details. Once reviewed, and if it makes sense to proceed, we will respond with a 👍.
+
+Please include tests with your pull request. Pull requests will not be accepted until all relevant tests are updated and passing.
+
+Code formatting is enforced by CI checks. Run `npm run format` to ensure your changes comply with the rules.
 
 ## 🖊️ Coding style
 
